@@ -1,25 +1,54 @@
 class Player
-    def play_turn(warrior)
-    @direction ||= :forward
+  HEALTHY = 15
+  FLEE = 8
 
-    if warrior.feel(@direction).wall?
-      warrior.pivot!
-    elsif warrior.feel(@direction).empty?
-      if warrior.health == 20 || (warrior.health < @health && warrior.health > 10)
-        warrior.walk!(@direction)
-      elsif warrior.health < @health
-        warrior.walk!(:backward)
-      else
+  def play_turn(warrior)
+    @health ||= warrior.health
+    @direction ||= :forward
+    @fled ||= false
+    @found_wall ||= false
+
+    if warrior.feel(@direction).empty?
+      if rest_time?(warrior)
         warrior.rest!
+        switch_direction(warrior) if @fled && @found_wall
+        @fled = false
+      elsif flee?(warrior)
+        switch_direction(warrior) unless @fled
+        @fled = true
+        warrior.walk!(@direction)
+      else
+        warrior.walk!(@direction)
       end
     elsif warrior.feel(@direction).captive?
       warrior.rescue!(@direction)
-    elsif warrior.health > 10
-      warrior.attack!(@direction)
+    elsif warrior.feel(@direction).wall?
+      warrior.pivot!
+      @found_wall = true
     else
-      warrior.walk!(:backward)
+      warrior.attack!
     end
 
     @health = warrior.health
   end
+
+  def under_attack?(warrior)
+    warrior.health < @health
+  end
+
+  def rest_time?(warrior)
+    warrior.health < HEALTHY && !under_attack?(warrior)
+  end
+
+  def switch_direction(warrior)
+    case @direction
+    when :forward then @direction = :backward
+    when :backward then @direction = :forward
+    end
+  end
+
+  def flee?(warrior)
+    warrior.health < FLEE
+  end
+
 end
